@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm[toml]", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parq"
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision",
+    "timm==0.9.2",
+    "h5py",
+]
+requires-python = ">=3.9"
+authors = [
+    {name = "Lin Xiao", email = "linx@meta.com"},
+    {name = "Lisa Jin", email = "lvj@meta.com"},
+]
+description = "A native PyTorch library for quantization-aware training"
+dynamic = ["version"]
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["quantization", "proximal gradient method", "regularization"]
+
+[project.optional-dependencies]
+dev = [
+    "tensorboard",
+    "matplotlib",
+    "flake8",
+    "black",
+]
+
+[project.urls]
+GitHub = "https://github.com/facebookresearch/parq"
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["parq*", "recipes*"]
+
+[tool.setuptools_scm]
+
+[tool.black]
+target-version = ["py39"]
+
+[tool.flake8]
+max-line-length = 88
+exclude = [".git", "__pycache__", "build"]
+extend-ignore = ["E203"]
