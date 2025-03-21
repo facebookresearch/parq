@@ -9,9 +9,11 @@ TBD
 We actively welcome your pull requests.
 
 1. Fork the repo and create your branch from `main`.
-2. If you've changed APIs, update the documentation.
-3. Make sure your code lints.
-4. If you haven't already, complete the Contributor License Agreement ("CLA").
+2. If you've added code that should be tested, add tests.
+3. If you've changed APIs, update the documentation.
+4. Ensure the test suite passes: `python -m unittest discover tests`.
+5. Make sure your code lints: `flake8 <path> && black <path>`.
+6. If you haven't already, complete the Contributor License Agreement ("CLA").
 
 ## Contributor License Agreement ("CLA")
 In order to accept your pull request, we need you to submit a CLA. You only need
@@ -27,7 +29,8 @@ Meta has a [bounty program](https://bugbounty.meta.com/) for the safe
 disclosure of security bugs. In those cases, please go through the process
 outlined on that page and do not file a public issue.
 
-## Coding Style  
+## Coding Style
+* 4 spaces for indentation rather than tabs
 * 80 character line length
 
 ## License

@@ -161,6 +161,7 @@ class QuantOptimizer(Optimizer):
             group["cumu_lr"] += group["lr"]
             gamma = max(1.0, group["cumu_lr"])
             b = group["quant_bits"]
+            block_size = group.get("quant_block_size")
             inv_slope = 0.0
             for p in group["params"]:
                 if not p.requires_grad:
@@ -173,14 +174,27 @@ class QuantOptimizer(Optimizer):
                 if self.quant_shrink:
                     p.div_(gamma)
 
+                # reshape p according to block size if specified
+                if block_size is not None:
+                    assert (
+                        p.size(-1) % block_size == 0
+                    ), f"{p.size(-1)=} is not divisible by {block_size=}"
+                    assert p.dim() <= 2, f"Invalid {p.dim()=} for {block_size=}"
+                    if p.dim() == 1:
+                        p = p.unsqueeze(0)
+
+                    # row-major ordering ensures this is correct
+                    p = p.view(-1, block_size)
+
                 # quantization by channel or by layer
                 # update quantization targets periodically
                 per_channel = self.quant_per_channel and p.dim() > 1
                 if quant_update:
-                    quants_size = 3 if b == 0 else 2**b
+                    quant_size = self.quantizer.get_quant_size(b)
+
                     if per_channel:
-                        quants_size = (p.size(0), quants_size)
-                    state["quants"] = torch.empty(quants_size, device=p.device)
+                        quant_size = (p.size(0), quant_size)
+                    state["quants"] = torch.empty(quant_size, device=p.device)
                     if is_dtensor(p):
                         state["quants"] = distribute_tensor(
                             state["quants"],

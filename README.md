@@ -4,7 +4,7 @@ PARQ is a PyTorch library for quantization-aware training (QAT). It is based on 
 
 PARQ enables QAT without modifying the code/module specifying the neural network model. It instead interfaces with a QAT optimizer only, allowing the users to specify the parameter groups to be quantized and the bit-widths for different groups. The QAT optimizer in PARQ can be configured with three components: a base optimizer, a quantization method, and a proximal map (see [Optimizer-only interface](#optimizer-only-interface) for details).
 
-Reference: [PARQ paper on arXiv]()
+Reference: [PARQ paper on arXiv](https://arxiv.org/abs/2503.15748)
 
 > [!NOTE]
 > PARQ is currently only compatible with [FSDP2](https://pytorch.org/docs/stable/distributed.fsdp.fully_shard.html) data parallelism. Support for its predecessor, [FSDP](https://pytorch.org/docs/stable/fsdp.html), will be added soon.

@@ -15,6 +15,10 @@ class Quantizer(ABC):
         self.center = center
 
     @abstractmethod
+    def get_quant_size(self, b: int) -> int:
+        """Given number of bits b, return total number of quantization values"""
+
+    @abstractmethod
     def quantize(self, p: Tensor, b: int) -> tuple[Tensor, Tensor]:
         """Provide interface for quantization:
             q, Q = Quantizer.quantize(p)

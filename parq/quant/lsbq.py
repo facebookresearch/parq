@@ -92,6 +92,9 @@ class LSBQuantizer(Quantizer):
         self.optimal = optimal
         self.ternary_multiplier = ternary_multiplier
 
+    def get_quant_size(self, b: int) -> int:
+        return 2**b
+
     def quantize(
         self, p: Tensor, b: int, dim: int | None = None
     ) -> tuple[Tensor, Tensor]:

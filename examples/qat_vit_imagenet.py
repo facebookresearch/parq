@@ -193,7 +193,7 @@ def main(args):
             ),
             torch.optim.lr_scheduler.CosineAnnealingLR(
                 base_optimizer,
-                T_max=args.epochs - args.const_lr_epochs,
+                T_max=args.epochs - args.warmup_epochs - args.const_lr_epochs,
                 eta_min=args.lr_min,
             ),
             torch.optim.lr_scheduler.ConstantLR(
