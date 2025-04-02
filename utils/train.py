@@ -32,14 +32,15 @@ def get_param_groups(
     params_no_wd: Dict[str, Tensor],
     params_wd: Dict[str, Tensor],
     skip_wd_names: Optional[Set[str]] = None,
-    prefix="",
-    force_full_prec=False,
+    prefix: str = "",
+    force_full_prec: bool = False,
 ) -> None:
-    """Recurse over children of model to extract quantizable weights, as well as
+    """Recurse over children of model to extract quantizable params_quant, as well as
     non-quantizable params (params_no_wd, params_wd).
     """
+    # drop torch.compile and DDP wrapper prefixes, if they exist
     for mn, module in model.named_children():
-        cur_prefix = f"{prefix}.{mn}" if len(prefix) else mn
+        cur_prefix = f"{prefix}.{mn}" if prefix else mn
 
         # leave ViT embedding and final classification layer at full precision
         # TODO: generalize to other architectures
@@ -54,7 +55,7 @@ def get_param_groups(
                 param_name = param_name.rsplit(f"{attr}.", 1)[-1]
 
             use_full_prec |= param_name.startswith("head.")
-            if not use_full_prec and param.dim() > 1:
+            if not use_full_prec and pn == "weight":
                 params_quant[param_name] = param
             elif pn == "bias" or skip_wd_names and param_name in skip_wd_names:
                 params_no_wd[param_name] = param
@@ -65,14 +66,15 @@ def get_param_groups(
             params_quant,
             params_no_wd,
             params_wd,
-            skip_wd_names,
-            cur_prefix,
-            use_full_prec,
+            skip_wd_names=skip_wd_names,
+            prefix=cur_prefix,
+            force_full_prec=use_full_prec,
         )
 
 
 def split_param_groups(
-    model: torch.nn.Module, skip_wd_names: Optional[Set[str]] = None
+    model: torch.nn.Module,
+    skip_wd_names: Optional[Set[str]] = None,
 ) -> Tuple[List[Any], List[Any], List[Any]]:
     """Splits model parameters into 3 groups, described below.
 
@@ -82,7 +84,9 @@ def split_param_groups(
         params_wd: unquantized, weight decay
     """
     params_quant, params_no_wd, params_wd = {}, {}, {}
-    get_param_groups(model, params_quant, params_no_wd, params_wd, skip_wd_names)
+    get_param_groups(
+        model, params_quant, params_no_wd, params_wd, skip_wd_names=skip_wd_names
+    )
     n_found_params = len(params_quant) + len(params_no_wd) + len(params_wd)
     assert n_found_params == len(list(model.parameters()))
 

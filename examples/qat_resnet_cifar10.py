@@ -142,8 +142,9 @@ def main(args):
     )
 
     if args.arch in ["resnet1202", "resnet110"]:
-        # for resnet1202 original paper uses lr=0.01 for first 400 minibatches for warm-up
-        # then switch back. In this setup it will correspond for first epoch.
+        # For resnet1202, original paper uses lr=0.01 for first 400 minibatches
+        # for warm-up then switches back. In this setup, it corresponds to the
+        # first epoch.
         for param_group in optimizer.param_groups:
             param_group["lr"] = args.lr * 0.1
 

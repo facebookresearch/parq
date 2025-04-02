@@ -61,7 +61,7 @@ def main(args):
     torch.cuda.set_device(device)
 
     # NOTE: drop_path_rate is defined for DeiT models
-    # see https://github.com/facebookresearch/deit/blob/7e160fe43f0252d17191b71cbb5826254114ea5b/models.py#L63
+    # see https://github.com/facebookresearch/deit/blob/7e160fe43f0252d17191b71cbb5826254114ea5b/models.py#L63  # noqa: E501
     num_classes = 1000
     model = create_model(
         args.arch,
@@ -152,7 +152,10 @@ def main(args):
         prox_map = ProxSoftQuant(anneal_start_step, anneal_end_step)
     elif args.quant_proxmap.lower() == "parq":
         prox_map = ProxPARQ(
-            anneal_start_step, anneal_end_step, steepness=args.anneal_steepness
+            anneal_start_step,
+            anneal_end_step,
+            steepness=args.anneal_steepness,
+            anneal_center=args.anneal_center,
         )
     elif args.quant_proxmap.lower() == "binaryrelax":
         prox_map = ProxBinaryRelax(anneal_start_step, anneal_end_step)
@@ -516,6 +519,12 @@ def get_arg_parser():
         help="Sigmoid steepness for QAT annealing",
     )
     parser.add_argument(
+        "--anneal-center",
+        default=0.5,
+        type=float,
+        help="Sigmoid center for QAT annealing",
+    )
+    parser.add_argument(
         "-p",
         "--print-freq",
         default=100,
@@ -573,7 +582,7 @@ def get_arg_parser():
     parser.add_argument(
         "--custom-train-transform",
         action="store_true",
-        help="use additional data augmentation methods: color jitter, auto augment, random erase",
+        help="use additional data augmentation methods: color jitter, auto augment, random erase",  # noqa: E501
     )
     parser.add_argument(
         "--cutmix-mixup",

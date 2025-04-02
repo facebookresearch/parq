@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+from collections import defaultdict
 from collections.abc import Callable
 from functools import partial
 from typing import Any
@@ -31,7 +32,7 @@ class QuantOptimizer(Optimizer):
     a proximal mapping (e.g, HardQuant/STE, PARQ, BinaryRelax)
         - update model parameters based on the above two updates
     Other parameters:
-        - warmup_steps: int > 0
+        - warmup_steps: int >= 0
         - quant_period: int > 0
         - quant_per_channel: True or False
         - quant_shrink: True or False
@@ -85,6 +86,10 @@ class QuantOptimizer(Optimizer):
         prox_map = self.prox_map.__class__.__name__
         extra_repr = "\n  ".join(("(", base_optimizer, f"{quantizer=}", f"{prox_map=}"))
         return f"{self.__class__.__name__} {extra_repr}\n)"
+
+    @property
+    def state(self) -> defaultdict[Tensor, Any]:  # pyre-ignore[3]
+        return self._state if hasattr(self, "_state") else self.base_optimizer.state
 
     @staticmethod
     def quantize_(
@@ -140,15 +145,22 @@ class QuantOptimizer(Optimizer):
             self.num_steps += 1
             return loss
 
-        # call base optimizer step() method to update latent parameters
-        loss = self.base_optimizer.step(closure=closure)  # pyre-ignore[6]
-
         if self.num_steps == self.warmup_steps:
             # first step of qat, save latent params, instead of restore
             self.save_latent_params()
         else:
             # qat: restore latent params for update by the base optimizer
             self.restore_latent_params()
+
+        # call base optimizer step() method to update latent parameters
+        loss = self.base_optimizer.step(closure=closure)  # pyre-ignore[6]
+
+        if hasattr(self, "_state"):
+            assert self.warmup_steps == 0
+            # restore the temporary state to the base optimizer's state
+            for p in self._state.keys():
+                self.base_optimizer.state[p]["latent"] = self._state[p]["latent"]
+            del self._state
 
         # check if it is time to update set of quantization values Q
         if (self.num_steps - self.warmup_steps) % self.quant_period == 0:
@@ -258,6 +270,12 @@ class QuantOptimizer(Optimizer):
     @torch._disable_dynamo
     def save_latent_params(self) -> None:
         """Save updated latent parameters before applying prox-map"""
+        if self.warmup_steps == 0:
+            assert len(self.state) == 0, "Expected empty state at first step()"
+            # Maintain the invariant that `len(self.state) == 0` before first
+            # self.base_optimizer.step() call by using a temporary state buffer
+            self._state = defaultdict(dict)
+
         for group in self.regularized_param_groups():
             for p in group["params"]:
                 if p.requires_grad:

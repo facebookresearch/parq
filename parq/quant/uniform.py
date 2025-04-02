@@ -3,6 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import math
 import torch
 
 from torch import Tensor
@@ -63,36 +64,40 @@ class UnifQuantizer(Quantizer):
         self.zero_point = zero_point
 
     def get_quant_size(self, b: int) -> int:
-        return 2**b
+        """Levels in [-2^{b-1} + self.int_shift, 2^{b-1} - self.int_shift].
+
+        Note that range_absmax = 2^{b-1} - self.int_shift on both ends of the
+        boundary and the interval is closed."""
+        return math.floor(2**b - 2 * self.int_shift) + 1
 
     def quantize(
         self, p: Tensor, b: int, dim: int | None = None
     ) -> tuple[Tensor, Tensor]:
         """Instantiation of Quantizer.quantize() method"""
         assert b != 0, "Please use TernaryUnifQuantizer instead"
+
         if self.center:
             q, mean = super().remove_mean(p.detach(), dim=dim)
         else:
             q = p.detach().clone()
             mean = torch.zeros(1, dtype=p.dtype, device=p.device)
-
         q_max = get_q_max(q, b, dim=dim, scale_method=self.scale_method)
-        q_max.clamp_(min=torch.finfo(p.dtype).tiny)
+        q_max.clamp_(min=torch.finfo(q.dtype).tiny)
 
         # clamp to quantization range
         q.copy_(torch.minimum(torch.maximum(q, -q_max), q_max))
 
         # scale from [-2^{b-1}+int_shift, 2^{b-1}-int_shift] to [-q_max, q_max]
-        n_levels = 2 ** (b - 1)
-        s = q_max / (n_levels - self.int_shift)
+        range_absmax = 2 ** (b - 1) - self.int_shift
+        s = q_max / range_absmax
 
         # scale by 1/s -> shift -zero_point -> round -> shift +zero_point ->
-        # scale by s,  where shift ensures rounding to integers
+        # scale by s, where shift ensures rounding to integers
         q.div_(s).sub_(self.zero_point).round_().add_(self.zero_point).mul_(s)
 
         # set of all target quantization values
         Q = torch.arange(
-            -n_levels + self.int_shift, n_levels, dtype=p.dtype, device=p.device
+            -range_absmax, range_absmax + 1e-5, dtype=p.dtype, device=p.device
         )
         if dim is not None:
             Q = Q.unsqueeze(0).mul(s)  # broadcasted multiply requires copy
@@ -111,6 +116,7 @@ class MaxUnifQuantizer(UnifQuantizer):
         self,
         center: bool = False,
         scale_method: str = "max",
+        int_shift: float = 1.0,
         zero_point: float = 0.0,
     ):
         """Set quantization function with int_shift=1.0.
@@ -122,12 +128,54 @@ class MaxUnifQuantizer(UnifQuantizer):
         super().__init__(
             center=center,
             scale_method=scale_method,
-            int_shift=1.0,
+            int_shift=int_shift,
             zero_point=zero_point,
         )
 
+
+class AsymUnifQuantizer(Quantizer):
     def get_quant_size(self, b: int) -> int:
-        return 2**b - 1
+        """Equivalent to int_max - int_min + 1, where int_min = -2^{b-1} and
+        int_max = 2^{b-1} - 1."""
+        return 2**b
+
+    def quantize(
+        self, p: Tensor, b: int, dim: int | None = None
+    ) -> tuple[Tensor, Tensor]:
+        assert b != 0, "Please use TernaryUnifQuantizer instead"
+
+        if self.center:
+            q, mean = super().remove_mean(p.detach(), dim=dim)
+        else:
+            q = p.detach().clone()
+            mean = torch.zeros(1, dtype=p.dtype, device=p.device)
+
+        if dim is not None:
+            q_min = q.min(dim=dim, keepdim=True).values
+            q_max = q.max(dim=dim, keepdim=True).values
+        else:
+            q_min = q.min()
+            q_max = q.max()
+
+        int_min = -(2 ** (b - 1))
+        int_max = 2 ** (b - 1) - 1
+        s = (q_max - q_min) / (int_max - int_min)
+        s.clamp_(min=torch.finfo(q.dtype).tiny)
+
+        zero_point = q_min.div_(s).round_()
+        q.div_(s).round_().sub_(zero_point).add_(zero_point).mul_(s)
+
+        Q = torch.arange(int_min, int_max + 1, dtype=p.dtype, device=p.device)
+        if dim is not None:
+            Q = Q.unsqueeze(0).mul(s)  # broadcasted multiply requires copy
+        else:
+            Q.mul_(s)
+
+        # return quantized tensor and set of possible quantization values
+        if self.center:
+            q += mean
+            Q += mean
+        return q, Q
 
 
 class TernaryUnifQuantizer(Quantizer):
@@ -140,6 +188,7 @@ class TernaryUnifQuantizer(Quantizer):
         self, p: Tensor, b: int, dim: int | None = None
     ) -> tuple[Tensor, Tensor]:
         assert b == 0, f"Unexpected {b=} for ternary case"
+
         if self.center:
             q, mean = super().remove_mean(p.detach(), dim=dim)
         else:
