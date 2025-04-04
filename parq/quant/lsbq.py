@@ -93,7 +93,7 @@ class LSBQuantizer(Quantizer):
         self.ternary_multiplier = ternary_multiplier
 
     def get_quant_size(self, b: int) -> int:
-        return 2**b
+        return 2**b if b > 0 else 3
 
     def quantize(
         self, p: Tensor, b: int, dim: int | None = None

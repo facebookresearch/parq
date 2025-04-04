@@ -123,12 +123,13 @@ class QuantOptimizer(Optimizer):
     def load_state_dict(
         self, state_dict: dict[str, Any], start_step: int | None = None
     ) -> None:
-        qat_state = state_dict.pop("qat_state")
+        qat_state = state_dict.get("qat_state")
         # resume from check points usually not corresponds to saved num_steps
         # so allow explicit start_step computed from epochs * steps_per_epoc
         if start_step is not None:
             self.num_steps = start_step
-        else:  # hope discrepancy in num_steps does not cause major problem!
+        elif qat_state is not None:
+            # hope discrepancy in num_steps does not cause major problem!
             self.num_steps = qat_state["num_steps"]
         self.base_optimizer.load_state_dict(state_dict)
 
