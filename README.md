@@ -20,7 +20,7 @@ or
 ```bash
 pip install -e .
 
-#for a developer installation
+# for a developer installation
 pip install -e '.[dev]'
 ```
 
@@ -86,13 +86,13 @@ See [`examples/qat_simple.py`](examples/qat_simple.py) for the full code context
 
 | | description | choices |
 | --- | --- | --- |
-| `quant-bits` | bit-width for quantized weights | 0 (ternary), 1—4 |
+| `quant-bits` | bit-width for quantized weights | 0 (ternary), 1-4 |
 | `quant-method` | method for determining quantized values | `lsbq`, `uniform` |
 | `quant-proxmap` | proximal mapping to project weights onto quantized values | `hard`, `soft`, `parq`, `binaryrelax` |
 | `quant-lsbq-optimal` | use optimal LSBQ algorithm instead of greedy | `store_true` flag |
 | `anneal-start` | start epoch for QAT annealing period | (0, `total_steps` - 1) |
 | `anneal-end` | end epoch for QAT annealing period | (`anneal_end`, `total_steps`) |
-| `anneal-steepness` | sigmoid steepness for PARQ inverse slope schedule | 25—100 |
+| `anneal-steepness` | sigmoid steepness for PARQ inverse slope schedule | 1-20 |
 
 ## Running the examples
 

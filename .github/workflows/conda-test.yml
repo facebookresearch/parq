@@ -1,0 +1,33 @@
+name: Tests within Conda
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        activate-environment: parq
+        environment-file: setup/parq.yml
+        python-version: 3.11
+    - name: Lint with flake8
+      run: |
+        conda install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=25 --statistics
+    - name: Test with unittest
+      run: |
+        python -m unittest discover test

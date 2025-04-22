@@ -10,8 +10,8 @@ from typing import Any
 
 import torch
 
-from parq.quant import Quantizer
-from parq.utils import HAS_DTENSOR, is_dtensor
+from ..quant import Quantizer
+from ..utils import HAS_DTENSOR, is_dtensor
 from torch import Tensor
 from torch.optim import Optimizer
 

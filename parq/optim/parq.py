@@ -9,7 +9,7 @@ import torch
 
 from typing import Optional
 from functools import partial
-from parq.utils import channel_bucketize
+from ..utils import channel_bucketize
 from torch import Tensor
 
 from .proxmap import ProxMap

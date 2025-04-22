@@ -34,7 +34,7 @@ GitHub = "https://github.com/facebookresearch/parq"
 
 [tool.setuptools.packages.find]
 where = [""]
-include = ["parq*", "recipes*"]
+include = ["parq*", "examples*"]
 
 [tool.setuptools_scm]
 

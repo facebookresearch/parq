@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from parq.utils import channel_bucketize
+from ..utils import channel_bucketize
 from torch import Tensor
 
 

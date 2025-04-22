@@ -8,7 +8,7 @@ from collections.abc import Iterable
 
 import torch
 
-from parq.utils import channel_bucketize
+from ..utils import channel_bucketize
 from torch import Tensor
 
 from .quantizer import Quantizer

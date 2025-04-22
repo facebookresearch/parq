@@ -25,6 +25,7 @@ from parq.optim import (  # noqa: F401
 )
 from parq.quant import UnifQuantizer, LSBQuantizer  # noqa: F401
 from utils.train import (
+    load_checkpoint,
     log_stats,
     save_checkpoint,
     split_param_groups,
@@ -123,15 +124,21 @@ def main(args):
         base_optimizer, milestones=[100, 150]
     )
 
+    start_epoch = 0
+    best_prec1 = 0
+    if args.resume:
+        start_epoch, best_prec1 = load_checkpoint(
+            model, optimizer, lr_scheduler, args.resume, steps_per_epoch, args.evaluate
+        )
+
     ##########################################################################
     # Quantization-Aware Training, loop over epochs
 
     # define loss function (criterion) and optimizer
     criterion = torch.nn.CrossEntropyLoss().cuda()
 
-    best_prec1 = 0
     log_path = os.path.join(args.save_dir, "log.txt")
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
 
         # train for one epoch
         print("current lr {:.5e}".format(optimizer.param_groups[0]["lr"]))
@@ -142,7 +149,7 @@ def main(args):
 
         # evaluate on validation set
         test_stats = validate(val_loader, model, criterion, args.print_freq)
-        prec1 = test_stats["prec1"]
+        prec1 = test_stats["test_prec1"]
         log_stats(train_stats, test_stats, log_path, epoch)
 
         # save best quantized model (after annealing ends)
@@ -152,6 +159,7 @@ def main(args):
                 epoch,
                 model,
                 optimizer,
+                lr_scheduler,
                 best_prec1,
                 os.path.join(args.save_dir, "best_model.pth"),
             )
@@ -161,6 +169,7 @@ def main(args):
                 epoch,
                 model,
                 optimizer,
+                lr_scheduler,
                 prec1,
                 os.path.join(args.save_dir, "checkpoint.pth"),
             )
@@ -184,6 +193,8 @@ def get_arg_parser():
     parser.add_argument("--data-dir", default="~/data", type=str)
     parser.add_argument("--save-dir", default="checkpoints", type=str)
     parser.add_argument("--print-freq", default=50, type=int)
+    parser.add_argument("--resume", default="", type=str)
+    parser.add_argument("--evaluate", action="store_true")
     parser.add_argument(
         "--save-every",
         type=int,
