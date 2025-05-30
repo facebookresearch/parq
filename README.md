@@ -24,7 +24,9 @@ pip install -e .
 pip install -e '.[dev]'
 ```
 
-To run the QAT examples without installation, follow [these instructions](setup/README.md).
+Alternatively, PARQ is included as a prototype in `torchao` and can be imported via [`torchao.prototype.parq`](https://github.com/pytorch/ao/tree/main/torchao/prototype/parq).
+
+To run the QAT examples, follow [these instructions](setup/README.md).
 
 ## Optimizer-only interface
 

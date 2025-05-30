@@ -63,7 +63,6 @@ class QuantOptimizer(Optimizer):
         self.quant_per_channel = quant_per_channel
         self.quant_shrink = quant_shrink
         self.anneal_wd_frac = anneal_wd_frac
-        self.num_steps = 0
 
         # Initialize "cumu_lr" and latent params in optimizer states
         for group in self.regularized_param_groups():
@@ -106,6 +105,22 @@ class QuantOptimizer(Optimizer):
         quants.copy_(Q)
         return q
 
+    @property
+    def state(self) -> defaultdict[Tensor, Any]:
+        return self._state if hasattr(self, "_state") else self.base_optimizer.state
+
+    @property
+    def num_steps(self) -> int:
+        for group in self.regularized_param_groups():
+            group.setdefault("num_steps", 0)
+            return group["num_steps"]
+
+    @num_steps.setter
+    def num_steps(self, value: int) -> None:
+        for group in self.regularized_param_groups():
+            group["num_steps"] = value
+            return
+
     def regularized_param_groups(self):  # pyre-ignore[3]
         """Yield parameter groups that need to be quantized."""
         for group in self.param_groups:
@@ -113,25 +128,15 @@ class QuantOptimizer(Optimizer):
                 yield group
 
     @torch._disable_dynamo
-    def state_dict(self) -> dict[str, Any]:
-        state_dict = self.base_optimizer.state_dict()
-        state_dict["qat_state"] = {"num_steps": self.num_steps}
-        # quantizer and prox_map may also need to save states, can add here
-        return state_dict
-
-    @torch._disable_dynamo
     def load_state_dict(
         self, state_dict: dict[str, Any], start_step: int | None = None
     ) -> None:
-        qat_state = state_dict.get("qat_state")
+        self.base_optimizer.load_state_dict(state_dict)
+
         # resume from check points usually not corresponds to saved num_steps
         # so allow explicit start_step computed from epochs * steps_per_epoc
         if start_step is not None:
             self.num_steps = start_step
-        elif qat_state is not None:
-            # hope discrepancy in num_steps does not cause major problem!
-            self.num_steps = qat_state["num_steps"]
-        self.base_optimizer.load_state_dict(state_dict)
 
     @torch.no_grad()
     def step(self, closure: Callable[[], float] | None = None) -> float | None:
