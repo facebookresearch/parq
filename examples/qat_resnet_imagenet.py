@@ -20,7 +20,7 @@ from torchvision.models import get_model
 
 from parq.quant import UnifQuantizer, LSBQuantizer
 from parq.optim import ProxPARQ, ProxHardQuant, ProxSoftQuant, ProxBinaryRelax
-from parq.optim import QuantOptimizer
+from parq.optim import build_quant_optimizer
 from utils.h5_vision_dataset import H5VisionDataset
 from utils.train import (
     is_main_process,
@@ -133,21 +133,21 @@ def main(args):
         weight_decay=args.weight_decay,
     )
 
-    # construct the quantization (QAT) optimizer
-    optimizer = (
-        QuantOptimizer(
-            base_optimizer,
-            quantizer,
-            prox_map,
+    if args.full_prec:
+        optimizer = base_optimizer
+    else:
+        # construct the quantization (QAT) optimizer
+        optimizer = build_quant_optimizer(
+            base_optimizer=base_optimizer,
+            quantizer=quantizer,
+            prox_map=prox_map,
             warmup_steps=args.quant_warmup_steps,
             quant_period=args.quant_period,
             quant_per_channel=args.quant_per_channel,
             quant_shrink=args.quant_shrink,
             anneal_wd_frac=args.anneal_wd_frac,
+            nm_gamma=args.nm_gamma,
         )
-        if not args.full_prec
-        else base_optimizer
-    )
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
 
@@ -360,6 +360,12 @@ def get_arg_parser():
         default=2,
         type=int,
         help="number of bits for QAT (default: 2)",
+    )
+    parser.add_argument(
+        "--nm-gamma",
+        type=float,
+        default=0.0,
+        help="gamma parameter for NM-SGD (default: 0.0, i.e., disabled)",
     )
     parser.add_argument(
         "--quant-warmup-steps",

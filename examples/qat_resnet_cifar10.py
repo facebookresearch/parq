@@ -21,7 +21,7 @@ from torchvision import datasets, transforms as T
 from model import resnet
 from parq.quant import UnifQuantizer, LSBQuantizer
 from parq.optim import ProxPARQ, ProxHardQuant, ProxSoftQuant, ProxBinaryRelax
-from parq.optim import QuantOptimizer
+from parq.optim import build_quant_optimizer
 from utils.train import (
     is_main_process,
     load_checkpoint,
@@ -126,20 +126,22 @@ def main(args):
         weight_decay=args.weight_decay,
     )
 
-    # construct the quantization (QAT) optimizer
-    optimizer = (
-        QuantOptimizer(
-            base_optimizer,
-            quantizer,
-            prox_map,
+    if args.full_prec:
+        optimizer = base_optimizer
+    else:
+        # construct the quantization (QAT) optimizer
+        optimizer = build_quant_optimizer(
+            base_optimizer=base_optimizer,
+            quantizer=quantizer,
+            prox_map=prox_map,
             warmup_steps=args.quant_warmup_steps,
             quant_period=args.quant_period,
             quant_per_channel=args.quant_per_channel,
             quant_shrink=args.quant_shrink,
+            anneal_wd_frac=args.anneal_wd_frac,
+            nm_gamma=args.nm_gamma,
         )
-        if not args.full_prec
-        else base_optimizer
-    )
+
 
     if args.arch in ["resnet1202", "resnet110"]:
         # For resnet1202, original paper uses lr=0.01 for first 400 minibatches
@@ -355,6 +357,12 @@ def get_arg_parser():
         type=int,
         metavar="N",
         help="number of bits for QAT (default: 2)",
+    )
+    parser.add_argument(
+        "--nm-gamma",
+        type=float,
+        default=0.0,
+        help="gamma parameter for NM-SGD (default: 0.0, i.e., disabled)",
     )
     parser.add_argument(
         "--quant-period",

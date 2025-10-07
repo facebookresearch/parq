@@ -177,13 +177,17 @@ class QuantOptimizer(Optimizer):
         for group in self.regularized_param_groups():
             # AProx in practice: ensure shrinkage coefficient >= 1
             group["cumu_lr"] += group["lr"]
-            gamma = max(1.0, group["cumu_lr"])
+            gamma = self._get_gamma(group)
             b = group["quant_bits"]
             block_size = group.get("quant_block_size")
             inv_slope = 0.0
+
             for p in group["params"]:
                 if not p.requires_grad:
                     continue
+                
+                self._correct_param(p, group)
+                
                 state = self.state[p]
                 # save latent parameters, need detach()? or copy p)
                 state["latent"].copy_(p)
@@ -290,3 +294,9 @@ class QuantOptimizer(Optimizer):
                         state["latent"] = p.detach().clone()
                     else:
                         state["latent"].copy_(p)
+
+    def _get_gamma(self, group):
+        return max(1.0, group["cumu_lr"])
+
+    def _correct_param(self, p: Tensor, group) -> None:
+        pass
