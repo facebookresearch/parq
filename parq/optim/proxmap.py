@@ -6,9 +6,9 @@
 from abc import ABC, abstractmethod
 
 import torch
+from torch import Tensor
 
 from ..utils import channel_bucketize
-from torch import Tensor
 
 
 # Create an abstract class to provide proximal-mapping interface

@@ -7,6 +7,6 @@ from .lsbq import LSBQuantizer  # noqa: F401
 from .quantizer import Quantizer  # noqa: F401
 from .uniform import (  # noqa: F401
     MaxUnifQuantizer,
-    UnifQuantizer,
     TernaryUnifQuantizer,
+    UnifQuantizer,
 )

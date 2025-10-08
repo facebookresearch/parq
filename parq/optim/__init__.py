@@ -2,17 +2,17 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+from functools import partial
+
+from torch.optim import Optimizer
+
+from ..quant import Quantizer
 from .binarelax import ProxBinaryRelax  # noqa: F401
+from .nm_sgd import NMSGDOptimizer  # noqa: F401
 from .parq import ProxPARQ  # noqa: F401
 from .proxmap import ProxHardQuant, ProxMap  # noqa: F401
 from .quantopt import QuantOptimizer  # noqa: F401
-from .nm_sgd import NMSGDOptimizer  # noqa: F401
 from .softquant import ProxSoftQuant  # noqa: F401
-from ..quant import Quantizer
-
-
-from functools import partial
-from torch.optim import Optimizer
 
 
 def build_quant_optimizer(

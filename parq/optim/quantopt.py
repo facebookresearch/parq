@@ -9,12 +9,11 @@ from functools import partial
 from typing import Any
 
 import torch
-
-from ..quant import Quantizer
-from ..utils import HAS_DTENSOR, is_dtensor
 from torch import Tensor
 from torch.optim import Optimizer
 
+from ..quant import Quantizer
+from ..utils import HAS_DTENSOR, is_dtensor
 from .proxmap import ProxMap
 
 if HAS_DTENSOR:

@@ -11,19 +11,19 @@ import argparse
 import os
 
 import torch
-
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms as T
+from torchvision import datasets
+from torchvision import transforms as T
 
 from model import resnet
 from parq.optim import (  # noqa: F401
-    ProxPARQ,
-    ProxHardQuant,
-    ProxSoftQuant,
     ProxBinaryRelax,
+    ProxHardQuant,
+    ProxPARQ,
+    ProxSoftQuant,
     QuantOptimizer,
 )
-from parq.quant import UnifQuantizer, LSBQuantizer  # noqa: F401
+from parq.quant import LSBQuantizer, UnifQuantizer  # noqa: F401
 from utils.train import (
     load_checkpoint,
     log_stats,

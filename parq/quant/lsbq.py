@@ -7,10 +7,9 @@ import itertools
 from collections.abc import Iterable
 
 import torch
-
-from ..utils import channel_bucketize
 from torch import Tensor
 
+from ..utils import channel_bucketize
 from .quantizer import Quantizer
 
 

@@ -4,10 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import torch
-
-from ..utils import channel_bucketize
 from torch import Tensor
 
+from ..utils import channel_bucketize
 from .proxmap import ProxMap
 
 

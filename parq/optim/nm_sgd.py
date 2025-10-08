@@ -7,9 +7,9 @@ import torch
 from torch import Tensor
 from torch.optim import Optimizer
 
-from .quantopt import QuantOptimizer
-from .proxmap import ProxMap
 from ..quant import Quantizer
+from .proxmap import ProxMap
+from .quantopt import QuantOptimizer
 
 
 class NMSGDOptimizer(QuantOptimizer):

@@ -4,8 +4,8 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
-import torch
 
+import torch
 from torch import Tensor
 
 from .quantizer import Quantizer

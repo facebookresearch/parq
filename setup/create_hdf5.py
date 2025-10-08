@@ -6,12 +6,12 @@
 """Convert ImageNet data directory to HDF5 format for faster data loading."""
 
 import argparse
+import os
+from multiprocessing import Pool, cpu_count
+from typing import List, Tuple
+
 import h5py
 import numpy as np
-import os
-
-from typing import List, Tuple
-from multiprocessing import cpu_count, Pool
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 

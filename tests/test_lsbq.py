@@ -4,9 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import random
-import torch
 import unittest
 
+import torch
 from torch import Tensor
 
 from parq.quant.lsbq import LSBQuantizer

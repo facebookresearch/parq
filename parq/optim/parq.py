@@ -4,14 +4,13 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
+from functools import partial
+from typing import Optional
 
 import torch
-
-from typing import Optional
-from functools import partial
-from ..utils import channel_bucketize
 from torch import Tensor
 
+from ..utils import channel_bucketize
 from .proxmap import ProxMap
 
 

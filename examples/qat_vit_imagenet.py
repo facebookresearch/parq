@@ -7,26 +7,32 @@
 
 import argparse
 import os
+from typing import Optional, Tuple
+
 import torch
 import torch.distributed as dist
-
-from typing import Optional, Tuple
-from timm.data.transforms_factory import (
-    transforms_imagenet_train,
-    transforms_imagenet_eval,
-)
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.data.distributed_sampler import RepeatAugSampler
+from timm.data.transforms_factory import (
+    transforms_imagenet_eval,
+    transforms_imagenet_train,
+)
 from timm.models import create_model
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.utils.tensorboard import SummaryWriter
-from torchvision import datasets, transforms as T
+from torchvision import datasets
+from torchvision import transforms as T
 from torchvision.transforms import v2
 
-from parq.quant import UnifQuantizer, LSBQuantizer
-from parq.optim import ProxPARQ, ProxHardQuant, ProxSoftQuant, ProxBinaryRelax
-from parq.optim import build_quant_optimizer
+from parq.optim import (
+    ProxBinaryRelax,
+    ProxHardQuant,
+    ProxPARQ,
+    ProxSoftQuant,
+    build_quant_optimizer,
+)
+from parq.quant import LSBQuantizer, UnifQuantizer
 from utils.h5_vision_dataset import H5VisionDataset
 from utils.train import (
     is_main_process,

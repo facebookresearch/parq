@@ -4,11 +4,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import random
-import torch
 import unittest
 
+import torch
+
+from parq.optim import ProxHardQuant, QuantOptimizer
 from parq.quant.lsbq import LSBQuantizer
-from parq.optim import QuantOptimizer, ProxHardQuant
 
 
 class TestQuantOptimizer(unittest.TestCase):
