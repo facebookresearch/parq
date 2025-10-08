@@ -25,8 +25,7 @@ keywords = ["quantization", "proximal gradient method", "regularization"]
 dev = [
     "tensorboard",
     "matplotlib",
-    "flake8",
-    "black",
+    "ruff",
 ]
 
 [project.urls]
@@ -38,10 +37,6 @@ include = ["parq*", "examples*"]
 
 [tool.setuptools_scm]
 
-[tool.black]
-target-version = ["py39"]
-
-[tool.flake8]
-max-line-length = 88
-exclude = [".git", "__pycache__", "build"]
-extend-ignore = ["E203"]
+[tool.ruff]
+lint.select = ["F", "I"]
+lint.ignore = ["E731"]

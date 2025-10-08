@@ -7,16 +7,17 @@ import datetime
 import json
 import os
 import time
+from collections import deque
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 import torch
 import torch.distributed as dist
-
-from typing import Any, Dict, List, Optional, Set, Tuple
-from collections import deque
 from timm.layers import PatchEmbed
 from torch import Tensor
 
-from .visual import plot_quantized_mapping
 from parq.optim import QuantOptimizer
+
+from .visual import plot_quantized_mapping
 
 NORM_LAYERS = (torch.nn.modules.batchnorm._BatchNorm, torch.nn.LayerNorm)
 

@@ -10,18 +10,23 @@ import argparse
 import os
 
 import torch
-import torch.nn as nn
 import torch.distributed as dist
-
+import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler, SequentialSampler
 from torch.utils.tensorboard import SummaryWriter
-from torchvision import datasets, transforms as T
+from torchvision import datasets
+from torchvision import transforms as T
 
 from model import resnet
-from parq.quant import UnifQuantizer, LSBQuantizer
-from parq.optim import ProxPARQ, ProxHardQuant, ProxSoftQuant, ProxBinaryRelax
-from parq.optim import build_quant_optimizer
+from parq.optim import (
+    ProxBinaryRelax,
+    ProxHardQuant,
+    ProxPARQ,
+    ProxSoftQuant,
+    build_quant_optimizer,
+)
+from parq.quant import LSBQuantizer, UnifQuantizer
 from utils.train import (
     is_main_process,
     load_checkpoint,
@@ -59,9 +64,9 @@ def main(args):
     )
 
     if args.torch_compile:
-        assert hasattr(
-            torch, "compile"
-        ), "{torch.__version__=} is missing torch.compile()"
+        assert hasattr(torch, "compile"), (
+            "{torch.__version__=} is missing torch.compile()"
+        )
         model = torch.compile(model, backend="inductor")
 
     # remove torch.compile and DDP wrappers, if they exist
@@ -141,7 +146,6 @@ def main(args):
             anneal_wd_frac=args.anneal_wd_frac,
             nm_gamma=args.nm_gamma,
         )
-
 
     if args.arch in ["resnet1202", "resnet110"]:
         # For resnet1202, original paper uses lr=0.01 for first 400 minibatches

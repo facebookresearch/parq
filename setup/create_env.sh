@@ -21,18 +21,14 @@ if [ -d "${CONDA_PREFIX}/envs/${env_name}" ]; then
     conda env remove -n $env_name -y
 fi
 
-# Downgrade grpcio to avoid bug in https://github.com/grpc/grpc/issues/32758
-conda create -n $env_name python=3.11 \
-    grpcio=1.51.1 \
-    pytorch">=2.0.0" torchvision pytorch-cuda=12.1 \
-    jupyterlab matplotlib flake8 black \
-    timm=0.9.2 tensorboard h5py \
-    -c pytorch -c nvidia -c conda-forge \
-    -y
+conda create -f parq.yml -y
 
 # The below two lines are only necessary for AWS cluster
-conda activate $env_name
-conda env config vars set MODULE_PATH=/opt/slurm/etc/files/modulesfiles:/usr/share/modules/modulefiles LD_PRELOAD=/usr/local/cuda-12.2/lib/libnccl.so
+# Downgrade grpcio to avoid bug in https://github.com/grpc/grpc/issues/32758
+if [ "$CLUSTER_ID" = "fair-a100" ]; then
+    conda activate $env_name
+    conda install grpcio==1.51.1 --force-reinstall -y
+fi
 
 conda clean --all -y
 

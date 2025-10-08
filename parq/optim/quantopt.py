@@ -9,12 +9,11 @@ from functools import partial
 from typing import Any
 
 import torch
-
-from ..quant import Quantizer
-from ..utils import HAS_DTENSOR, is_dtensor
 from torch import Tensor
 from torch.optim import Optimizer
 
+from ..quant import Quantizer
+from ..utils import HAS_DTENSOR, is_dtensor
 from .proxmap import ProxMap
 
 if HAS_DTENSOR:
@@ -106,10 +105,6 @@ class QuantOptimizer(Optimizer):
         return q
 
     @property
-    def state(self) -> defaultdict[Tensor, Any]:
-        return self._state if hasattr(self, "_state") else self.base_optimizer.state
-
-    @property
     def num_steps(self) -> int:
         for group in self.regularized_param_groups():
             group.setdefault("num_steps", 0)
@@ -185,9 +180,9 @@ class QuantOptimizer(Optimizer):
             for p in group["params"]:
                 if not p.requires_grad:
                     continue
-                
+
                 self._correct_param(p, group)
-                
+
                 state = self.state[p]
                 # save latent parameters, need detach()? or copy p)
                 state["latent"].copy_(p)
@@ -198,9 +193,9 @@ class QuantOptimizer(Optimizer):
 
                 # reshape p according to block size if specified
                 if block_size is not None:
-                    assert (
-                        p.size(-1) % block_size == 0
-                    ), f"{p.size(-1)=} is not divisible by {block_size=}"
+                    assert p.size(-1) % block_size == 0, (
+                        f"{p.size(-1)=} is not divisible by {block_size=}"
+                    )
                     assert p.dim() <= 2, f"Invalid {p.dim()=} for {block_size=}"
                     if p.dim() == 1:
                         p = p.unsqueeze(0)

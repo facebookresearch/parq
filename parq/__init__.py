@@ -5,10 +5,10 @@
 
 from .optim import (  # noqa: F401
     ProxBinaryRelax,
-    ProxPARQ,
     ProxHardQuant,
     ProxMap,
-    QuantOptimizer,
+    ProxPARQ,
     ProxSoftQuant,
+    QuantOptimizer,
 )
 from .quant import LSBQuantizer, Quantizer, UnifQuantizer  # noqa: F401

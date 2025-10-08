@@ -3,10 +3,10 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import h5py
 import io
-
 from typing import Any, Callable, Optional, Tuple
+
+import h5py
 from PIL import Image
 from torchvision.datasets import VisionDataset
 
