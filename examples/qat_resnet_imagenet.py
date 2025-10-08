@@ -64,9 +64,9 @@ def main(args):
     )
 
     if args.torch_compile:
-        assert hasattr(
-            torch, "compile"
-        ), "{torch.__version__=} is missing torch.compile()"
+        assert hasattr(torch, "compile"), (
+            "{torch.__version__=} is missing torch.compile()"
+        )
         model = torch.compile(model, backend="inductor")
 
     # remove torch.compile and DDP wrappers, if they exist

@@ -59,9 +59,9 @@ def main(args):
     )
 
     if args.torch_compile:
-        assert hasattr(
-            torch, "compile"
-        ), "{torch.__version__=} is missing torch.compile()"
+        assert hasattr(torch, "compile"), (
+            "{torch.__version__=} is missing torch.compile()"
+        )
         model = torch.compile(model, backend="inductor")
 
     # remove torch.compile and DDP wrappers, if they exist
@@ -141,7 +141,6 @@ def main(args):
             anneal_wd_frac=args.anneal_wd_frac,
             nm_gamma=args.nm_gamma,
         )
-
 
     if args.arch in ["resnet1202", "resnet110"]:
         # For resnet1202, original paper uses lr=0.01 for first 400 minibatches

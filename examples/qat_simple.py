@@ -139,7 +139,6 @@ def main(args):
 
     log_path = os.path.join(args.save_dir, "log.txt")
     for epoch in range(start_epoch, epochs):
-
         # train for one epoch
         print("current lr {:.5e}".format(optimizer.param_groups[0]["lr"]))
         train_stats = train_one_epoch(

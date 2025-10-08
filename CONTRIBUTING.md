@@ -9,7 +9,7 @@ We actively welcome your pull requests.
 2. If you've added code that should be tested, add tests.
 3. If you've changed APIs, update the documentation.
 4. Ensure the test suite passes: `python -m unittest discover test`.
-5. Make sure your code lints: `flake8 <path> && black <path>`.
+5. Make sure your code lints: `ruff check --fix && ruff format .`.
 6. If you haven't already, complete the Contributor License Agreement ("CLA").
 
 ## Contributor License Agreement ("CLA")

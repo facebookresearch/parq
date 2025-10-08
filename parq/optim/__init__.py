@@ -5,7 +5,7 @@
 from .binarelax import ProxBinaryRelax  # noqa: F401
 from .parq import ProxPARQ  # noqa: F401
 from .proxmap import ProxHardQuant, ProxMap  # noqa: F401
-from .quantopt import QuantOptimizer   # noqa: F401
+from .quantopt import QuantOptimizer  # noqa: F401
 from .nm_sgd import NMSGDOptimizer  # noqa: F401
 from .softquant import ProxSoftQuant  # noqa: F401
 from ..quant import Quantizer
@@ -13,6 +13,7 @@ from ..quant import Quantizer
 
 from functools import partial
 from torch.optim import Optimizer
+
 
 def build_quant_optimizer(
     base_optimizer: Optimizer,
@@ -27,7 +28,7 @@ def build_quant_optimizer(
 ) -> QuantOptimizer:
     if nm_gamma > 0:
         prune_opt_cls = partial(NMSGDOptimizer, nm_gamma=nm_gamma)
-    else: 
+    else:
         prune_opt_cls = QuantOptimizer
 
     return prune_opt_cls(
