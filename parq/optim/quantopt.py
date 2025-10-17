@@ -48,6 +48,7 @@ class QuantOptimizer(Optimizer):
         quant_per_channel: bool = False,
         quant_shrink: bool = False,
         anneal_wd_frac: float = 0.0,
+        no_anneal: bool = False,
     ) -> None:
         if not 0 <= anneal_wd_frac <= 1:
             raise ValueError(f"Invalid {anneal_wd_frac=} outside range [0.0, 1.0]")
@@ -63,6 +64,8 @@ class QuantOptimizer(Optimizer):
         self.quant_per_channel = quant_per_channel
         self.quant_shrink = quant_shrink
         self.anneal_wd_frac = anneal_wd_frac
+        self.no_anneal = no_anneal
+        self.relative_quantized_frac = 0.0
 
         # Initialize "cumu_lr" and latent params in optimizer states
         for group in self.regularized_param_groups():
@@ -127,6 +130,27 @@ class QuantOptimizer(Optimizer):
             if group.get("quant_bits", 16) < 16:
                 yield group
 
+    def _count_quantized_params(self, p: Tensor, quants: Tensor, dim: int | None = None) -> float:
+        eps = min(torch.finfo(p.dtype).eps, torch.finfo(quants.dtype).eps) # use machine eplsion of the more precise dtype
+        if dim == -1:
+            expanded_p = p.unsqueeze(-1)  # (N, channel_len, 1)
+            expanded_quants = quants.unsqueeze(1)  # (N, 1, num_quants)
+            matches = (torch.abs(expanded_p - expanded_quants) <= eps).any(dim=-1)  # (N, channel_len)
+            return matches.sum().item()
+        elif dim is None:
+            matches = (torch.abs(p - quants) <= eps).any(dim=None)
+            return matches.sum().item()
+        else:
+            raise ValueError(f"Invalid {dim=} for counting quantized params")
+
+
+    def _modify_grads(self) -> None:
+        """Modify gradients before calling base optimizer step().
+        This is a no-op for the standard QuantOptimizer.
+        Sub-classes (e.g., NMSGDOptimizer) may override this method.
+        """
+        pass
+    
     @torch._disable_dynamo
     def load_state_dict(
         self, state_dict: dict[str, Any], start_step: int | None = None
@@ -157,6 +181,8 @@ class QuantOptimizer(Optimizer):
         else:
             # qat: restore latent params for update by the base optimizer
             self.restore_latent_params()
+        
+        self._modify_grads()
 
         # call base optimizer step() method to update latent parameters
         loss = self.base_optimizer.step(closure=closure)  # pyre-ignore[6]
@@ -174,6 +200,8 @@ class QuantOptimizer(Optimizer):
         else:
             quant_update = False
 
+        total_quantized_params = 0
+        total_regularized_params = 0
         for group in self.regularized_param_groups():
             # AProx in practice: ensure shrinkage coefficient >= 1
             group["cumu_lr"] += group["lr"]
@@ -243,7 +271,8 @@ class QuantOptimizer(Optimizer):
 
                 # apply (step-dependent) proximal mapping in place
                 pfunc = partial(
-                    self.prox_map.apply_, step_count=self.num_steps, dim=dim
+                    self.prox_map.apply_, step_count=self.num_steps, dim=dim,
+                    gamma=gamma if self.no_anneal else 0.0
                 )
                 if is_dtensor(p):
                     pfunc = local_map(
@@ -257,6 +286,9 @@ class QuantOptimizer(Optimizer):
                     )
                 inv_slope = pfunc(p, q, state["quants"])
 
+                total_quantized_params += self._count_quantized_params(p, state["quants"], dim)
+                total_regularized_params += p.numel()
+
             # quantized parameters share the same PARQ inverse slope
             if inv_slope:
                 if self.anneal_wd_frac > 0:
@@ -267,6 +299,8 @@ class QuantOptimizer(Optimizer):
                 group["inv_slope"] = inv_slope  # save for tensorboard
 
         self.num_steps += 1
+        self.relative_quantized_frac = total_quantized_params / total_regularized_params
+        self.relative_quantized_frac = self.relative_quantized_frac.item() if isinstance(self.relative_quantized_frac, Tensor) else self.relative_quantized_frac
         return loss
 
     @torch._disable_dynamo
@@ -296,7 +330,8 @@ class QuantOptimizer(Optimizer):
                         state["latent"].copy_(p)
 
     def _get_gamma(self, group):
-        return max(1.0, group["cumu_lr"])
+        # return max(1.0, group["cumu_lr"])
+        return group["cumu_lr"]
 
     def _correct_param(self, p: Tensor, group) -> None:
         pass

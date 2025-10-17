@@ -36,6 +36,7 @@ class ProxHardQuant(ProxMap):
         Q: Tensor,
         step_count: int,
         dim: int | None = None,
+        gamma: float = 0.0,
     ) -> None:
         if q is None:
             # quantize to the nearest point in Q

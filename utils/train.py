@@ -256,6 +256,8 @@ def train_one_epoch(
         prec1 = accuracy(output.data, target_orig)[0]
         losses.update(loss.item(), input.size(0))
         top1.update(prec1.item(), input.size(0))
+        relative_quantized_frac = getattr(optimizer, "relative_quantized_frac", 0.0)
+        relative_quantized_frac = relative_quantized_frac.item() if isinstance(relative_quantized_frac, Tensor) else relative_quantized_frac
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -267,7 +269,8 @@ def train_one_epoch(
                 "Time {batch_time.val:.3f} ({batch_time.window_avg:.3f})\t"
                 "Data {data_time.val:.3f} ({data_time.window_avg:.3f})\t"
                 "Loss {loss.val:.4f} ({loss.window_avg:.4f})\t"
-                "Prec@1 {top1.val:.3f} ({top1.window_avg:.3f})".format(
+                "Prec@1 {top1.val:.3f} ({top1.window_avg:.3f})\t"
+                "Relative Quantized Fraction {relative_quantized_frac}".format(
                     epoch,
                     i,
                     len(train_loader),
@@ -275,6 +278,7 @@ def train_one_epoch(
                     data_time=data_time,
                     loss=losses,
                     top1=top1,
+                    relative_quantized_frac=relative_quantized_frac,
                 )
             )
             if tb_writer:
@@ -285,7 +289,7 @@ def train_one_epoch(
 
     loss_avg = losses.avg
     prec1_avg = top1.avg
-    train_stats = {"train_loss": loss_avg, "train_prec1": prec1_avg}
+    train_stats = {"train_loss": loss_avg, "train_prec1": prec1_avg, "relative_quantized_frac": relative_quantized_frac}
     if is_main_process():
         lr = optimizer.param_groups[0]["lr"]
         lr_sum = None
@@ -300,6 +304,7 @@ def train_one_epoch(
             tb_writer.add_scalar("train/lr", lr, elapsed_steps)
             tb_writer.add_scalar("train/loss", loss_avg, elapsed_steps)
             tb_writer.add_scalar("train/prec1", prec1_avg, elapsed_steps)
+            tb_writer.add_scalar("train/relative_quantized_frac", relative_quantized_frac, elapsed_steps)
 
             if lr_sum is not None:
                 tb_writer.add_scalar("train/lr_sum", lr_sum, elapsed_steps)

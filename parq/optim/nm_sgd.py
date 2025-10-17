@@ -25,6 +25,7 @@ class NMSGDOptimizer(QuantOptimizer):
         quant_shrink: bool = False,
         anneal_wd_frac: float = 0.0,
         nm_gamma: float = 0.0,
+        no_anneal: bool = False,
     ) -> None:
         super().__init__(
             base_optimizer=base_optimizer,
@@ -35,6 +36,7 @@ class NMSGDOptimizer(QuantOptimizer):
             quant_per_channel=quant_per_channel,
             quant_shrink=quant_shrink,
             anneal_wd_frac=anneal_wd_frac,
+            no_anneal=no_anneal
         )
         self.nm_gamma = nm_gamma
         for group in self.regularized_param_groups():
@@ -52,7 +54,15 @@ class NMSGDOptimizer(QuantOptimizer):
                     self.state[p]["corrections"] = self.state[p]["latent"] - p
                     p.copy_(self.state[p]["latent"])
 
+    def _modify_grads(self) -> None:
+        for group in self.regularized_param_groups():
+            gamma_inv = 1.0 / self.nm_gamma
+            if group.get("nm_scale_corrections", False):
+                for p in group["params"]:
+                    if p.requires_grad and "corrections" in self.state[p]:
+                        p.grad.add_(self.state[p]["corrections"], alpha=gamma_inv)
+
     def _correct_param(self, p: Tensor, group) -> None:
-        if "corrections" in self.state[p]:
+        if not group.get("nm_scale_corrections", False) and "corrections" in self.state[p]:
             stepsize = -1.0 * group["lr"] / self.nm_gamma
             p.add_(self.state[p]["corrections"], alpha=stepsize)

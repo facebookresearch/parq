@@ -63,12 +63,13 @@ class ProxPARQ(ProxMap):
         Q: Tensor,
         step_count: int,
         dim: int | None = None,
+        gamma: float = 0.0,
     ) -> float:
         """Prox-map of PARQ with gradual annealing to hard quantization."""
 
-        if step_count < self.anneal_start:
+        if step_count < self.anneal_start and gamma <= 0.0:
             inv_slope = 1.0
-        elif step_count >= self.anneal_end:
+        elif step_count >= self.anneal_end and gamma <= 0.0:
             inv_slope = 0.0
             if q is None:
                 # hard quantization to the nearest point in Q
@@ -79,13 +80,16 @@ class ProxPARQ(ProxMap):
                     q = Q.gather(1, channel_bucketize(p, Q_mid))
             p.copy_(q)
         else:
-            inv_slope = normalized_mirror_sigmoid(
-                step_count,
-                self.anneal_start,
-                self.anneal_end,
-                self.steepness,
-                self.anneal_center,
-            )
+            if gamma > 0.0:
+                inv_slope = 1 / gamma
+            else:
+                inv_slope = normalized_mirror_sigmoid(
+                    step_count,
+                    self.anneal_start,
+                    self.anneal_end,
+                    self.steepness,
+                    self.anneal_center,
+                )
             inv_slope = max(torch.finfo(p.dtype).tiny, inv_slope)
             # it is important to clamp idx-1 and then clamping idx itself
             # idx_1[k] == idx[k] iff p[k] > Q.max() or p[k] <= Q.min()

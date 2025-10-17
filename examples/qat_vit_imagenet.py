@@ -57,13 +57,14 @@ def main(args):
         os.makedirs(args.save_dir)
 
     # set local CUDA device and create model
-    local_rank = int(os.environ["LOCAL_RANK"])
+    local_rank = int(os.environ.get("LOCAL_RANK", args.local_rank))
     device = torch.device(f"cuda:{local_rank}")
     torch.cuda.set_device(device)
 
     # NOTE: drop_path_rate is defined for DeiT models
     # see https://github.com/facebookresearch/deit/blob/7e160fe43f0252d17191b71cbb5826254114ea5b/models.py#L63  # noqa: E501
     num_classes = 1000
+
     model = create_model(
         args.arch,
         pretrained=args.pretrained,
@@ -127,7 +128,7 @@ def main(args):
     # specify number of quantization bits for different parameter groups
     params_quant, params_no_wd, params_wd = split_param_groups(model, skip_wd_names)
     param_groups = [
-        {"params": params_quant, "quant_bits": args.quant_bits},
+        {"params": params_quant, "quant_bits": args.quant_bits, "nm_scale_corrections": args.nm_scale_corrections},
         {"params": params_no_wd, "weight_decay": 0},
         {"params": params_wd},
     ]
@@ -184,6 +185,7 @@ def main(args):
             quant_per_channel=args.quant_per_channel,
             quant_shrink=args.quant_shrink,
             anneal_wd_frac=args.anneal_wd_frac,
+            no_anneal=args.no_anneal,
             nm_gamma=args.nm_gamma,
         )
 
@@ -461,6 +463,11 @@ def get_arg_parser():
         help="gamma parameter for NM-SGD (default: 0.0, i.e., disabled)",
     )
     parser.add_argument(
+        "--nm-scale-corrections",
+        action="store_true",
+        help="scale NM-SGD proximal gradients by Adam as well as stochastic gradients",
+    )
+    parser.add_argument(
         "--quant-bits",
         default=2,
         type=int,
@@ -506,6 +513,11 @@ def get_arg_parser():
         type=str,
         choices=["hard", "soft", "parq", "binaryrelax"],
         help="proximal mapping for QAT",
+    )
+    parser.add_argument(
+        "--no-anneal",
+        action="store_true",
+        help="disable annealing in proximal mapping",
     )
     parser.add_argument(
         "--anneal-start",
@@ -600,6 +612,11 @@ def get_arg_parser():
         "--no-repeat-aug",
         action="store_true",
         help="disable repeated augmentation in data sampler",
+    )
+    parser.add_argument(
+        "--local-rank",
+        type=int,
+        help="local rank for DistributedDataParallel",
     )
     return parser
 
