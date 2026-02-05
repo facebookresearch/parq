@@ -350,6 +350,12 @@ def get_arg_parser():
         help="weight decay (default: 1e-4)",
     )
     parser.add_argument(
+        "--anneal-wd-frac",
+        type=float,
+        default=0.0,
+        help="fraction of weight decay to anneal during QAT (default: 0.0)",
+    )
+    parser.add_argument(
         "--full-prec",
         action="store_true",
         help="use full-precision training",
