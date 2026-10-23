@@ -19,14 +19,9 @@ def is_dtensor(x):
 
 
 def channel_bucketize(input: Tensor, boundaries: Tensor, right: bool = False) -> Tensor:
-    """Generalizes torch.bucketize to run on 2-D boundaries."""
-    inf_pad = torch.full_like(boundaries[:, :1], torch.inf)
-    boundaries = (
-        torch.cat((-inf_pad, boundaries), dim=1)
-        if right
-        else torch.cat((boundaries, inf_pad), dim=1)
-    )
-    boundaries = boundaries.unsqueeze(1)
-    input = input.unsqueeze(-1)
-    mask = input.ge(boundaries) if right else input.le(boundaries)
-    return mask.to(torch.uint8).argmax(dim=-1)
+    """Bucketize each input row against its sorted boundary row.
+
+    This matches torch.bucketize without constructing an input-by-boundary
+    comparison mask. Keep boundary precision when input and boundaries differ.
+    """
+    return torch.searchsorted(boundaries.contiguous(), input.contiguous(), right=right)

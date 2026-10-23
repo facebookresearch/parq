@@ -32,4 +32,20 @@ jobs:
         }
     - name: Test with unittest
       run: |
-        python -m unittest discover test
+        python -c '
+        import random
+        import unittest
+        from pathlib import Path
+
+        import torch
+
+        root = Path.cwd() / "tests"
+        success = True
+        for path in sorted(root.glob("test_*.py")):
+            random.seed(0)
+            torch.manual_seed(0)
+            suite = unittest.defaultTestLoader.discover(str(root), pattern=path.name)
+            result = unittest.TextTestRunner(verbosity=2).run(suite)
+            success = result.wasSuccessful() and success
+        raise SystemExit(not success)
+        '
