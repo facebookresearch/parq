@@ -47,7 +47,7 @@ model = torchvision.models.resnet18().cuda()
 
 # split params into quantizable and non-quantizable groups and set bit-widths
 weights = [p for name, p in model.named_parameters() if name.endswith("weight")]
-others  = [p for name, p in model.named_parameters() if not name.endswith("weight")]
+others = [p for name, p in model.named_parameters() if not name.endswith("weight")]
 
 param_groups = [
     {"params": weights, "quant_bits": 2},
@@ -55,9 +55,7 @@ param_groups = [
 ]
 
 # create base optimizer (SGD, Adam or AdamW)
-base_optimizer = torch.optim.SGD(
-    param_groups, lr=0.1, momentum=0.9, weight_decay=1e-4
-)
+base_optimizer = torch.optim.SGD(param_groups, lr=0.1, momentum=0.9, weight_decay=1e-4)
 
 # create quantizer and proximal map objects
 quantizer = UnifQuantizer()
