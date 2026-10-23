@@ -20,6 +20,7 @@ jobs:
     - name: Install dependencies
       uses: conda-incubator/setup-miniconda@v3
       with:
+        channels: conda-forge
         activate-environment: parq
         environment-file: setup/parq.yml
         python-version: 3.11

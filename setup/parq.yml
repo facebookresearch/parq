@@ -1,5 +1,6 @@
 name: parq
 channels:
+  - conda-forge
   - nodefaults
 dependencies:
   - cuda-toolkit
