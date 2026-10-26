@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
+from collections.abc import Sequence
 
 import torch
 from torch import Tensor
@@ -134,10 +135,42 @@ class MaxUnifQuantizer(UnifQuantizer):
 
 
 class AsymUnifQuantizer(Quantizer):
+    """Uniform asymmetric quantizer: 2^b levels at integer multiples of a scale,
+    so zero is exact.
+
+    Min-max scaling lets outliers dominate at low bit-widths. ``clip_ratios``
+    tries each range shrink in (0, 1] and keeps the least-squared-error one
+    (per channel when ``dim`` is given); values outside saturate. Include 1.0
+    to never do worse than min-max.
+    """
+
+    def __init__(
+        self, center: bool = False, clip_ratios: Sequence[float] | None = None
+    ) -> None:
+        super().__init__(center)
+        if clip_ratios is not None:
+            clip_ratios = tuple(float(r) for r in clip_ratios)
+            assert clip_ratios and all(0 < r <= 1 for r in clip_ratios), (
+                f"clip_ratios must be non-empty and in (0, 1], got {clip_ratios}"
+            )
+        self.clip_ratios = clip_ratios
+
     def get_quant_size(self, b: int) -> int:
         """Equivalent to int_max - int_min + 1, where int_min = -2^{b-1} and
         int_max = 2^{b-1} - 1."""
         return 2**b
+
+    @staticmethod
+    def _scale_and_zero_point(
+        q_min: Tensor, q_max: Tensor, n_levels: int, ratio: float = 1.0
+    ) -> tuple[Tensor, Tensor]:
+        s = ((q_max - q_min) * ratio / (n_levels - 1)).clamp_(
+            min=torch.finfo(q_min.dtype).tiny
+        )
+        # Levels start at zero_point, not int_min, unless the range is symmetric.
+        # Q must use the same offset or it disagrees with q.
+        zero_point = (q_min * ratio).div_(s).round_()
+        return s, zero_point
 
     def quantize(
         self, p: Tensor, b: int, dim: int | None = None
@@ -157,19 +190,30 @@ class AsymUnifQuantizer(Quantizer):
             q_min = q.min()
             q_max = q.max()
 
-        int_min = -(2 ** (b - 1))
-        int_max = 2 ** (b - 1) - 1
-        s = (q_max - q_min) / (int_max - int_min)
-        s.clamp_(min=torch.finfo(q.dtype).tiny)
+        n_levels = 2**b
+        s, zero_point = self._scale_and_zero_point(q_min, q_max, n_levels)
+        if self.clip_ratios:
+            best_err = None
+            for ratio in self.clip_ratios:
+                s_r, zp_r = self._scale_and_zero_point(q_min, q_max, n_levels, ratio)
+                q_r = q.div(s_r).round_().clamp_(zp_r, zp_r + n_levels - 1).mul_(s_r)
+                err = (q_r - q).square_()
+                err = err.sum(dim=dim, keepdim=True) if dim is not None else err.sum()
+                if best_err is None:
+                    best_err, s, zero_point = err, s_r, zp_r
+                else:
+                    better = err < best_err
+                    best_err = torch.where(better, err, best_err)
+                    s = torch.where(better, s_r, s)
+                    zero_point = torch.where(better, zp_r, zero_point)
 
-        zero_point = q_min.div_(s).round_()
-        q.div_(s).round_().sub_(zero_point).add_(zero_point).mul_(s)
+        q.div_(s).round_().clamp_(zero_point, zero_point + n_levels - 1).mul_(s)
 
-        Q = torch.arange(int_min, int_max + 1, dtype=p.dtype, device=p.device)
+        Q = torch.arange(n_levels, dtype=p.dtype, device=p.device)
         if dim is not None:
-            Q = Q.unsqueeze(0).mul(s)  # broadcasted multiply requires copy
+            Q = Q.unsqueeze(0).add(zero_point).mul(s)  # broadcast requires copy
         else:
-            Q.mul_(s)
+            Q = Q.add(zero_point).mul(s)
 
         # return quantized tensor and set of possible quantization values
         if self.center:

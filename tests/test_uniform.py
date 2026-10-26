@@ -50,6 +50,58 @@ class TestUnifQuantizer(unittest.TestCase):
             self.assertTrue(cur_uniq.equal(Q_test))
 
 
+class TestAsymUnifQuantizer(unittest.TestCase):
+    @torch.no_grad
+    def test_grid_matches_quantized_values_on_asymmetric_rows(self):
+        """Q must list the levels q actually uses, also for skewed ranges."""
+        torch.manual_seed(0)
+        p = torch.randn(64, 256)
+        p[:32] += torch.linspace(-2, 2, 32).unsqueeze(1)  # shift rows off center
+        p[::8, ::5] = 0.0
+        quantizer = AsymUnifQuantizer()
+        for b in (2, 3, 4):
+            for dim in (-1, None):
+                q, Q = quantizer.quantize(p, b, dim=dim)
+                self.assertEqual(Q.size(-1), quantizer.get_quant_size(b))
+                rows = zip(q, Q) if dim is not None else [(q, Q)]
+                for q_row, Q_row in rows:
+                    self.assertTrue(torch.isin(q_row.unique(), Q_row).all())
+                # Integer multiples of the scale: zero stays exactly zero.
+                self.assertTrue((q[::8, ::5] == 0).all())
+
+    @torch.no_grad
+    def test_clip_ratio_one_is_min_max(self):
+        torch.manual_seed(0)
+        p = torch.randn(16, 64) + 0.3
+        for b in (2, 4):
+            q0, Q0 = AsymUnifQuantizer().quantize(p, b, dim=-1)
+            q1, Q1 = AsymUnifQuantizer(clip_ratios=(1.0,)).quantize(p, b, dim=-1)
+            self.assertTrue(torch.equal(q0, q1) and torch.equal(Q0, Q1))
+
+    def test_clip_ratios_validated(self):
+        for bad in ((), (0.0,), (1.5,)):
+            with self.assertRaises(AssertionError):
+                AsymUnifQuantizer(clip_ratios=bad)
+
+
+class TestAsymUnifClipSearch(unittest.TestCase):
+    @torch.no_grad
+    def test_clip_search_lowers_error_and_keeps_zero(self):
+        torch.manual_seed(0)
+        p = torch.randn(64, 512)
+        p[:, 0] *= 8.0  # one outlier column sets the min-max scale
+        p[::8, 1::7] = 0.0
+        for b in (2, 4):
+            q0, _ = AsymUnifQuantizer().quantize(p, b, dim=-1)
+            q, Q = AsymUnifQuantizer(clip_ratios=(0.45, 0.7, 1.0)).quantize(
+                p, b, dim=-1
+            )
+            self.assertLess((q - p).norm(), (q0 - p).norm())
+            for q_row, Q_row in zip(q, Q):
+                self.assertTrue(torch.isin(q_row.unique(), Q_row).all())
+            self.assertTrue((q[::8, 1::7] == 0).all())
+
+
 def load_tests(loader, tests, pattern):
     test_cases = unittest.TestSuite()
     for nbit in range(3):
@@ -61,6 +113,14 @@ def load_tests(loader, tests, pattern):
                 test_cases.addTest(
                     TestUnifQuantizer("test_unique_vals", nbit, dim, sym)
                 )
+    test_cases.addTest(
+        TestAsymUnifQuantizer("test_grid_matches_quantized_values_on_asymmetric_rows")
+    )
+    test_cases.addTest(
+        TestAsymUnifClipSearch("test_clip_search_lowers_error_and_keeps_zero")
+    )
+    test_cases.addTest(TestAsymUnifQuantizer("test_clip_ratio_one_is_min_max"))
+    test_cases.addTest(TestAsymUnifQuantizer("test_clip_ratios_validated"))
     return test_cases
 
 
