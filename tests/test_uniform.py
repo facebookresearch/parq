@@ -50,6 +50,22 @@ class TestUnifQuantizer(unittest.TestCase):
             self.assertTrue(cur_uniq.equal(Q_test))
 
 
+class TestAsymUnifQuantizer(unittest.TestCase):
+    @torch.no_grad
+    def test_targets_cover_input_range(self):
+        quantizer = AsymUnifQuantizer()
+        p = torch.linspace(0.0, 1.0, 12)
+        for b in (2, 3, 4):
+            for dim in (None, -1):
+                x = p if dim is None else p.unsqueeze(0).repeat(2, 1)
+                q, Q = quantizer.quantize(x, b, dim=dim)
+                q_test, Q_test = (q, Q) if dim is None else (q[0], Q[0])
+                self.assertEqual(Q_test.numel(), quantizer.get_quant_size(b))
+                self.assertTrue(torch.isin(q_test, Q_test).all())
+                torch.testing.assert_close(Q_test[0], p.min())
+                torch.testing.assert_close(Q_test[-1], p.max())
+
+
 def load_tests(loader, tests, pattern):
     test_cases = unittest.TestSuite()
     for nbit in range(3):
@@ -61,6 +77,7 @@ def load_tests(loader, tests, pattern):
                 test_cases.addTest(
                     TestUnifQuantizer("test_unique_vals", nbit, dim, sym)
                 )
+    test_cases.addTest(TestAsymUnifQuantizer("test_targets_cover_input_range"))
     return test_cases
 
 

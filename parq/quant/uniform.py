@@ -162,14 +162,17 @@ class AsymUnifQuantizer(Quantizer):
         s = (q_max - q_min) / (int_max - int_min)
         s.clamp_(min=torch.finfo(q.dtype).tiny)
 
+        # levels are zero_point + [0, int_max - int_min], scaled by s, so that
+        # Q covers [q_min, q_max] instead of a range centered at zero
         zero_point = q_min.div_(s).round_()
-        q.div_(s).round_().sub_(zero_point).add_(zero_point).mul_(s)
+        q.div_(s).round_().sub_(zero_point).clamp_(min=0, max=int_max - int_min)
+        q.add_(zero_point).mul_(s)
 
-        Q = torch.arange(int_min, int_max + 1, dtype=p.dtype, device=p.device)
+        Q = torch.arange(int_max - int_min + 1, dtype=p.dtype, device=p.device)
         if dim is not None:
-            Q = Q.unsqueeze(0).mul(s)  # broadcasted multiply requires copy
+            Q = Q.unsqueeze(0).add(zero_point).mul_(s)  # broadcast requires copy
         else:
-            Q.mul_(s)
+            Q.add_(zero_point).mul_(s)
 
         # return quantized tensor and set of possible quantization values
         if self.center:
