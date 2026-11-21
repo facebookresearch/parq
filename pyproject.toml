@@ -22,6 +22,7 @@ license = {file = "LICENSE"}
 keywords = ["quantization", "proximal gradient method", "regularization"]
 
 [project.optional-dependencies]
+torchao = ["torchao"]
 dev = [
     "tensorboard",
     "matplotlib",
@@ -40,3 +41,6 @@ include = ["parq*", "examples*"]
 [tool.ruff]
 lint.select = ["F", "I"]
 lint.ignore = ["E731"]
+
+[tool.setuptools.package-data]
+"parq.quant" = ["LICENSE.torchao"]

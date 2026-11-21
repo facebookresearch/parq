@@ -25,6 +25,7 @@ def build_quant_optimizer(
     quant_shrink: bool = False,
     anneal_wd_frac: float = 0.0,
     nm_gamma: float = 0.0,
+    group_quantizer_map: dict[int, Quantizer] | None = None,
 ) -> QuantOptimizer:
     if nm_gamma > 0:
         prune_opt_cls = partial(NMSGDOptimizer, nm_gamma=nm_gamma)
@@ -40,4 +41,5 @@ def build_quant_optimizer(
         quant_per_channel=quant_per_channel,
         quant_shrink=quant_shrink,
         anneal_wd_frac=anneal_wd_frac,
+        group_quantizer_map=group_quantizer_map,
     )

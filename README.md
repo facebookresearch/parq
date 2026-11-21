@@ -151,3 +151,20 @@ python -m examples.qat_resnet_cifar10 \
 ## License
 
 PARQ is MIT licensed, as found in the LICENSE file.
+
+## Additional quantizers
+
+`AsymUnifQuantizer` uses the same zero-point offset for its quantized weights
+and cached target grid. Constant groups are supported. Per-parameter-group
+quantizers can be selected with `QuantOptimizer(group_quantizer_map={...})`;
+keys refer to the enumerated quantized parameter groups.
+
+`AffineQ2Quantizer` provides MLX-compatible, min-max, and iterative MSE
+calibration for groups of 32, 64, or 128 weights. `FastAffineQ2Quantizer`
+selects three candidate grids and applies one least-squares refinement.
+Both return the quantized weights and a sorted four-level target grid.
+
+Install `parq[torchao]` to use the optional `MSEUnifTorchaoQuantizer`,
+`ClippedUnifTorchaoQuantizer`, and `MinMaxStretchedUnifTorchaoQuantizer`.
+These classes load TorchAO when explicitly imported. The ported modules retain
+their BSD 3-Clause license in `parq/quant/LICENSE.torchao`.

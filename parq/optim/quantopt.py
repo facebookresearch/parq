@@ -46,6 +46,7 @@ class QuantOptimizer(Optimizer):
         quant_per_channel: bool = False,
         quant_shrink: bool = False,
         anneal_wd_frac: float = 0.0,
+        group_quantizer_map: dict[int, Quantizer] | None = None,
     ) -> None:
         if not 0 <= anneal_wd_frac <= 1:
             raise ValueError(f"Invalid {anneal_wd_frac=} outside range [0.0, 1.0]")
@@ -53,6 +54,7 @@ class QuantOptimizer(Optimizer):
         # need to reconstruct these objects if loading checkpoint
         self.base_optimizer = base_optimizer
         self.quantizer = quantizer
+        self.group_quantizer_map = group_quantizer_map
         self.prox_map = prox_map
 
         # need to store these attributes in state_dict for checkpoint
@@ -121,6 +123,11 @@ class QuantOptimizer(Optimizer):
             if group.get("quant_bits", 16) < 16:
                 yield group
 
+    def _get_quantizer(self, group_idx: int) -> Quantizer:
+        if self.group_quantizer_map and group_idx in self.group_quantizer_map:
+            return self.group_quantizer_map[group_idx]
+        return self.quantizer
+
     @torch._disable_dynamo
     def state_dict(self) -> dict[str, Any]:
         state_dict = self.base_optimizer.state_dict()
@@ -141,6 +148,9 @@ class QuantOptimizer(Optimizer):
     def load_state_dict(
         self, state_dict: dict[str, Any], start_step: int | None = None
     ) -> None:
+        legacy_qat_state = state_dict.get("qat_state")
+        state_dict = dict(state_dict)
+        state_dict.pop("qat_state", None)
         saved_quants: dict[Tensor, Tensor] = {}
 
         def preserve_quants(optimizer: Optimizer, checkpoint: dict[str, Any]) -> None:
@@ -174,6 +184,8 @@ class QuantOptimizer(Optimizer):
         # so allow explicit start_step computed from epochs * steps_per_epoc
         if start_step is not None:
             self.num_steps = start_step
+        elif legacy_qat_state is not None:
+            self.num_steps = legacy_qat_state["num_steps"]
 
     @torch.no_grad()
     def step(self, closure: Callable[[], float] | None = None) -> float | None:
@@ -211,8 +223,8 @@ class QuantOptimizer(Optimizer):
         else:
             quant_update = False
 
-        for group in self.regularized_param_groups():
-            quantizer = self.quantizer
+        for group_idx, group in enumerate(self.regularized_param_groups()):
+            quantizer = self._get_quantizer(group_idx)
 
             # AProx in practice: ensure shrinkage coefficient >= 1
             group["cumu_lr"] += group["lr"]

@@ -31,6 +31,7 @@ class NMSGDOptimizer(QuantOptimizer):
         quant_shrink: bool = False,
         anneal_wd_frac: float = 0.0,
         nm_gamma: float = 0.0,
+        group_quantizer_map: dict[int, Quantizer] | None = None,
     ) -> None:
         super().__init__(
             base_optimizer=base_optimizer,
@@ -41,6 +42,7 @@ class NMSGDOptimizer(QuantOptimizer):
             quant_per_channel=quant_per_channel,
             quant_shrink=quant_shrink,
             anneal_wd_frac=anneal_wd_frac,
+            group_quantizer_map=group_quantizer_map,
         )
         self.nm_gamma = nm_gamma
         for group in self.regularized_param_groups():
